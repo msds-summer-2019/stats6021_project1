@@ -1,70 +1,52 @@
 #Project 1
 
 #import statements
+#install.packages('reshape2')
 library("reshape2")
+#install.packages('plyr')
 library("plyr")
+#install.packages('ggplot2')
 library("ggplot2")
+#install.packages('dplyr')
 library("dplyr")
-
-
-
-#install.packages('caret')
-#library('caret')
+#install.packages('data.table')
 library(data.table)
 #install.packages('mltools')
 library(mltools)
-
+#install.packages('MASS')
 library(MASS)
 #install.packages('car')
 library(car)
-
 #fix issue b/w dplyer and MASS with select
 detach("package:dplyr", character.only = TRUE)
 library("dplyr", character.only = TRUE)
-
-
-install.packages('DAAG')
+#install.packages('DAAG')
 library(DAAG)
-
+#install.packages('xtable')
+library(xtable)
+#Set options for xtable
+options(xtable.floating = FALSE)
+options(xtable.timestamp = "")
+#install.packages('RColorBrewer')
 library(RColorBrewer)
 
-setwd('C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project1')
+#setwd('C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project1')
 #EDA ----
 #Read in data
 df <- read.csv('clean_diamond_data.csv')
 
-
-#stringsAsFactors = (TRUE/FALSE) (default is TRUE)
-#lm will treat Factors differently
-
+#Get sense of format of data
 str(df)
 
+#create a table dataframe of df for plotting purposes
 ddf <- tbl_df(df)
-
-
-
-
-# #cut
-# cut_palette <- rev(brewer.pal(length(unique(df$cut)),'YlGnBu'))
-# plot(y = df$logprice, x = df$logcarat, col=cut_palette[df$cut_rank], xlab = 'log(carat)', ylab = 'log(price)', main = 'Cut by Price & Carat')
-# cut_legend = c('Astor Ideal','Ideal','Very Good','Good')
-# legend("bottomright",legend = cut_legend,col=cut_palette,pch=1)
-# #clarity
-# clar_palette <- rev(brewer.pal(length(unique(df$clarity)),'YlGnBu'))
-# plot(y = df$logprice, x = df$logcarat, col=clar_palette[df$clarity_rank], xlab = 'log(carat)', ylab = 'log(price)', main = 'Clarity by Price & Carat')
-# cut_legend = c('FL','IF','VVS1','VVS2','VS1','VS2','SI1','SI2')
-# legend("bottomright",legend = cut_legend,col=clar_palette,pch=1)
-# 
-# #color
-# col_palette <- rev(brewer.pal(length(unique(df$color)),'YlGnBu'))
-# plot(y = df$logprice, x = df$logcarat, col=col_palette[df$color_rank], xlab = 'log(carat)', ylab = 'log(price)', main = 'Color by Price & Carat')
-# color_legend = c('D','E','F','G','H','I','J')
-# legend("bottomright",legend = color_legend,col=col_palette,pch=1)
 
 # Feature Engineering ----
 df$logprice <- log10(df$price)
 df$logcarat <- log10(df$carat)
 #display.brewer.all()
+
+#Grouping clarity into 4 groups
 df$clarity_grouped <- 99
 df$clarity_grouped[df$clarity == 'FL' | df$clarity == 'IF'] <- 'FL/IF' 
 df$clarity_grouped[df$clarity == 'VVS1' | df$clarity == 'VVS2'] <- 'VVS1/2' 
@@ -84,9 +66,7 @@ df$clarity_rank[df$clarity == 'VS2'] <- 6
 df$clarity_rank[df$clarity == 'SI1'] <- 7
 df$clarity_rank[df$clarity == 'SI2'] <- 8
 
-
-
-
+#Grouping cut into 2 groups
 df$cut_grouped <- 99
 df$cut_grouped[df$cut == 'Astor Ideal' | df$cut == 'Ideal'] <- 'Astor Ideal/Ideal'
 df$cut_grouped[df$cut == 'Very Good' | df$cut == 'Good'] <- 'Very Good/Good'
@@ -174,6 +154,33 @@ png('logcarat_logprice.png')
 plot(log10(df$carat), log10(df$price), xlab = 'log(Carat)',ylab = 'log(Price)', main = 'Diamond log(Carat) vs. log(Price)')
 dev.off()
 
+
+#cut
+#Use ColorBrewer's palette to assign values of cut to the palette
+cut_palette <- rev(brewer.pal(length(unique(df$cut)),'YlGnBu'))
+#plot log carat, log price, and cut, use cut_rank to imply order
+plot(y = df$logprice, x = df$logcarat, col=cut_palette[df$cut_rank], xlab = 'log(carat)', ylab = 'log(price)', main = 'Cut by Price & Carat')
+#add the legend
+cut_legend = c('Astor Ideal','Ideal','Very Good','Good')
+legend("bottomright",legend = cut_legend,col=cut_palette,pch=1)
+
+#clarity
+#assign palette to clarity values
+clar_palette <- rev(brewer.pal(length(unique(df$clarity)),'YlGnBu'))
+#plot log carat, log price, and clarity, use clarity_rank to imply order
+plot(y = df$logprice, x = df$logcarat, col=clar_palette[df$clarity_rank], xlab = 'log(carat)', ylab = 'log(price)', main = 'Clarity by Price & Carat')
+#add the legend to the plot
+cut_legend = c('FL','IF','VVS1','VVS2','VS1','VS2','SI1','SI2')
+legend("bottomright",legend = cut_legend,col=clar_palette,pch=1)
+
+#color
+#assign palette to color values (ironic)
+col_palette <- rev(brewer.pal(length(unique(df$color)),'YlGnBu'))
+#plot log carat, log price, and color
+plot(y = df$logprice, x = df$logcarat, col=col_palette[df$color_rank], xlab = 'log(carat)', ylab = 'log(price)', main = 'Color by Price & Carat')
+color_legend = c('D','E','F','G','H','I','J')
+legend("bottomright",legend = color_legend,col=col_palette,pch=1)
+
 # Modeling ----
 
 #What linear model will provide the most accurate prediction for price?
@@ -181,103 +188,168 @@ dev.off()
 #base model, price on all regressors
 
 #Simple models ----
+
+#Model 1----
+#start with main effects, no transformations
 simple_mod <- lm(formula = price ~ carat + clarity + color + cut, data =df)
 summary(simple_mod) #0.58
 vif(simple_mod) #high for clarity and cut
 
+#Get externally studentized residuals
 sres_simple <- studres(simple_mod)
 
-#Not normal
+#Q-Q plot to test normality of residuals
 png(file = 'simple_mod_qq.png')
-qqnorm(sres_simple)
-qqline(sres_simple)
+qqnorm(sres_simple, main = 'Model 1 - Normality of Residuals')
+qqline(sres_simple)#Not normally distributed 
 dev.off()
 
-
-#Transform price
+#Model 2----
+#Transform price since residuals were not normal
 simple_mod2 <- lm(formula = logprice ~ carat + clarity + color + cut, data = df)
 summary(simple_mod2) # 0.74, better
 vif(simple_mod2) #clarity and cut still high
 
+#Get externally studentized residuals
 sres_simple2 <- studres(simple_mod2)
 
-#Not normal
+#Q-Q plot to test normality of residuals
 png(file = 'simple_mod2_qq.png')
-qqnorm(sres_simple2)
-qqline(sres_simple2)
+qqnorm(sres_simple2, main = 'Model 2 - Normality of Residuals')
+qqline(sres_simple2)#Not normal
+
 dev.off()
 
-#Transform carat too
+#Model 3----
+#Transform carat too in hopes of achieving normally distributed residuals
 simple_mod3 <- lm(formula = logprice ~ logcarat + clarity + color + cut, data = df)
-summary(simple_mod3) # 0.981, very nice!
+summary(simple_mod3) # 0.981 R-squared, very nice!
 
+#Get externally studentized residuals
 sres_simple3 <- studres(simple_mod3)
 
-#Pretty close to normal
+#Q-Q plot to test normality of residuals
 png(file = 'simple_mod3_qq.png')
-qqnorm(sres_simple3)
-qqline(sres_simple3)
+qqnorm(sres_simple3, main = 'Model 3 - Normality of Residuals')
+qqline(sres_simple3) #Pretty close to normal
 dev.off()
 
-#Homoskedastic
+#Plot fitted values vs. residuals to test for homoscedasticity
 png(file = 'simple_mod3_homo.png')
-plot(fitted.values(simple_mod3), sres_simple3)
+plot(fitted.values(simple_mod3), sres_simple3, xlab = 'Predicted Price', ylab = 'Residuals', main = 'Model 3 - Homoscedasticity') #homoscedastic
 dev.off()
 
-#Some multi-collinearity in Clarity and Cut
-vif(simple_mod3) #clarity and cut still high
+#Test multi-collinearity in the model with Variance Inflation Factors
+vif(simple_mod3) #clarity and cut are high (>10)
 
+#Write output of VIF to a csv for external plotting purposes
+write.csv((data.frame(vif(simple_mod3))), 'simple_mod3_vifs.csv')
 
-#Advanced models ----
+#Model 4----
 
-#Base model with log carat, grouped color and clarity, 
-
+#Keep log carat and log price, but we group clarity and cut to try and reduce their VIFs
 base_mod <- lm(formula = logprice ~ logcarat + clarity_grouped + color + cut_grouped, data = df)
 
-summary(base_mod) #lowered to 0.9796
+summary(base_mod) # R-squared lowered very slightly to 0.9796
 
+#Get externally studentized residuals
 sres <- studres(base_mod)
 
-#Normality is pretty good
+#Q-Q plot to test normality of residuals
 png('base_mod_qq.png')
-qqnorm(sres)
-qqline(sres)
+qqnorm(sres, main = 'Model 4 - Normality of Residuals')
+qqline(sres) #Normality is pretty good
 dev.off()
 
-#Homoskedacity
+#Plot fitted values vs. residuals to test for homoscedasticity
 png('base_mod_homo.png')
-plot(fitted.values(base_mod), sres)
+plot(fitted.values(base_mod), sres, xlab = 'Predicted Price', ylab = 'Residuals',
+     main = 'Model 4 - Homoscedasticity') #homoscedastic
 dev.off()
 
-#No variance inflation
-vif(base_mod) #great VIFs
+#Test multi-collinearity in the model with Variance Inflation Factors
+vif(base_mod) #No major variance inflation
 
+#Write output of VIF to a csv for external plotting purposes
+write.csv((data.frame(vif(base_mod))), 'base_mod_vifs.csv')
 
-#add interaction term for logcarat and color
+#Model 5 ----
+
+#Based off of research, color and logcarat seem to have an interaction effect. This model will test that hypothesis
 base_mod2 <-  lm(formula = logprice ~ logcarat + clarity_grouped + color + cut_grouped + logcarat * color, data = df)
-summary(base_mod2) #.98
+summary(base_mod2) #R-squared is 0.98
 
-#adding interaction term proved significant
-anova(base_mod, base_mod2) 
+#Running partial F-test shows significance of adding a new interaction term to the model
+xtable(anova(base_mod, base_mod2))#adding interaction term proved significant
 
+#Get externally studentized residuals
 sres2 <- studres(base_mod2)
 
-#Normality is pretty good
+#Q-Q plot to test normality of residuals
 png('base_mod2_qq.png')
-qqnorm(sres2)
-qqline(sres2)
+qqnorm(sres2, main = 'Model 5 - Normality of Residuals')
+qqline(sres2)#Normality is pretty good
 dev.off()
 
-#Homoskedacity
+#Plot fitted values vs. residuals to test for homoscedasticity
 png('base_mod2_homo.png')
-plot(fitted.values(base_mod2), sres2)
+plot(fitted.values(base_mod2), sres2, xlab = 'Predicted Price', ylab = 'Residuals',
+     main = 'Model 5 - Homoscedasticity') #Homoskedac
 dev.off()
 
-#No variance inflation
-vif(base_mod) #great VIFs
-vif(base_mod2) #looking good too
+#Test multi-collinearity in the model with Variance Inflation Factors
+vif(base_mod2) #no major variance inflation
 
-avPlots(base_mod2)
+#Write output of VIF to a csv for external plotting purposes
+write.csv((data.frame(vif(base_mod2))), 'base_mod2_vifs.csv')
+
+#Generate added value plots for Model 5
+png('base_mod2_avPlots.png')
+avPlots(base_mod2, main = 'Model 5 - Added Variable Plots') #all variables seem to have an effect on the model, since their slopes are all non-zero. Interestingly, the interaction between color and logcarat shows that as color "worsens" the impact on price increases (severity of slope increases)
+dev.off()
+
+#Generate leverage plots to identify  highly influential points
+png('base_mod2_leverage.png')
+leveragePlots(base_mod2, main = 'Model 5 - Leverage Plots')
+
+#Cooks distance, not used in our final presentation or report
+cd_cutoff <- 4/((nrow(df)-length(base_mod2$coefficients)-2)) 
+
+#Plotting the residuals with cooks distance, not used in final pres or report
+plot(base_mod2, which = 4, cooks.levels = cd_cutoff)
+
+#Ploting leverage with cooks distance super imposed, not used in final pres or report
+plot(base_mod2, which = 6, cooks.levels = cd_cutoff)
+
+
+
+#measure prediction interval length for a sample diamond of 1.5 carats, VS2 Clarity, very good cut, and J color (for models 4 and 5)
+df_pred1 <- data.frame(logcarat = log10(1.50), clarity_grouped = 'VS1/2', cut_grouped = 'Very Good/Good', color = 'J')
+
+#inputs used for  model 3
+df_pred2 <- data.frame(logcarat = log10(1.50), clarity = 'VS2', cut = 'Very Good', color = 'J')
+
+#Examinging prediction interval lengths between model 4 and 5 after adding interaction term
+pred4_simple_mod3 <- 10^predict(simple_mod3, df_pred2, interval = 'prediction')
+pred4_base_mod <- 10^predict(base_mod, df_pred1, interval = 'prediction')
+pred4_base_mod2 <- 10^predict(base_mod2, df_pred1, interval = 'prediction')
+
+#Also look at confidence interval out of curiosity
+conf4_base_mod2 <- 10^predict(base_mod2, df_pred1, interval = 'confidence')
+
+#Calculate prediction interval lengths for Models 3,4, and 5
+pred_int_length_simple_mod3 <- pred4_simple_mod3[1,3] - pred4_simple_mod3[1,2]
+pred_int_length_base_mod <- pred4_base_mod[1,3] - pred4_base_mod[1,2]
+pred_int_length_base_mod2 <- pred4_base_mod2[1,3] - pred4_base_mod2[1,2]
+
+#Calcualte the MSres for each model to demonstrate the reduction in prediction interval length
+base_mod_msres <- anova(base_mod)$'Mean Sq'[5]
+base_mod2_msres <- anova(base_mod2)$'Mean Sq'[6]
+
+base_mod_msres
+base_mod2_msres
+
+#### - Unused code ----
 # 
 # 
 # 
