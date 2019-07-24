@@ -30,3 +30,36 @@ dc$carCat <- factor(dc$carCat,levels = c("<0.25", "0.25-0.49", "0.5-0.74", "0.75
 ggplot(data.frame(dc), aes(x=carCat)) + geom_bar() + xlab('Carat Range') + ylab('Number of Diamonds in Data') +ggtitle("Range of Carats of Diamonds in Dataset\n(N=210,638)") +  theme(plot.title = element_text(hjust = 0.5))
 
 
+
+#prediction 1:
+
+df_pred_1 <- data.frame(logcarat=log10(0.30), clarity_grouped = "SI1/2", cut_grouped = 'Very Good/Good', color= "E")
+pred_1 <- predict(base_mod2, df_pred_1, interval = 'prediction')
+fit_1 <- 10^pred_1[1,1]
+lower_1 <- 10^pred_1[1,2]
+higher_1 <- 10^pred_1[1,3]
+
+#prediction 2:
+
+df_pred_2 <- data.frame(logcarat=log10(0.58), clarity_grouped = "SI1/2", cut_grouped = 'Very Good/Good', color= "J")
+pred_2 <- predict(base_mod2, df_pred_2, interval = 'prediction')
+fit_2 <- 10^pred_2[1,1]
+lower_2 <- 10^pred_2[1,2]
+higher_2 <- 10^pred_2[1,3]
+
+
+#prediction 3:
+
+df_pred_3 <- data.frame(logcarat=log10(0.85), clarity_grouped = "SI1/2", cut_grouped = 'Very Good/Good', color= "F")
+pred_3 <- predict(base_mod2, df_pred_3, interval = 'prediction')
+fit_3 <- 10^pred_3[1,1]
+lower_3 <- 10^pred_3[1,2]
+higher_3 <- 10^pred_3[1,3]
+
+
+#prediction 4:
+
+df_pred_4 <- data.frame(logcarat=log10(1.50), clarity_grouped = "VS1/2", cut_grouped = 'Very Good/Good', color= "J")
+pred_4 <- 10^predict(base_mod2, df_pred_4, interval = 'prediction')
+
+
