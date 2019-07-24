@@ -35,11 +35,14 @@ plot(df$TagCount, df$AnswerCount)
 # plot numCharInQuestion vs. answer count -- are shorter questions more likely to get answered? looks like that may be the case based on the graph!
 plot(df$numCharInQuestion, df$AnswerCount)
 
-# plot WordCount vs. answer count -- are shorter answers (by word count) more likely to get answered?
-plot(df$WordCount, df$AnswerCount)
+# plot QuestionWordCount vs. answer count -- are shorter answers (by word count) more likely to get answered?
+plot(df$QuestionWordCount, df$AnswerCount)
 
 # What is the difference between answers & comments? Can we gauge the activty of a post based on the word count? Is this even the right way of doing this (i.e. is there double counting?)
-plot(df$WordCount, df$AnswerCount + df$CommentCount)
+plot(df$QuestionWordCount, df$AnswerCount + df$CommentCount)
+
+# Question + Title Word Count vs. Answer + comment Count
+plot(df$QuestionWordCount + df$TitleWordCount, df$AnswerCount + df$CommentCount)
 
 # Are questions that are viewed more more likely to be answered?
 plot(df$ViewCount, df$AnswerCount)
