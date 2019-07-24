@@ -1,3 +1,5 @@
+library(ggplot2)
+
 df <- read.csv("nondeletedposts.csv", stringsAsFactors = F)
 #df <- df[seq(1,nrow(df), 10),] # just temporary to make things faster while I'm testing things out
 df$y <- !is.na(df$AcceptedAnswerId)
@@ -16,13 +18,9 @@ df <- transform(df, TagCount=sapply(strsplit(df$Tags, " "), length))
 
 
 ## try to clean up timestamp data (not sure if this is necessary tbh)
-df$CreationDate = as.Date(strptime(df$CreationDate, "%Y-%m-%d %H:%M:%S"))
-#df$LastEditDate = as.Date(strptime(df$LastEditDate, "%Y-%m-%d %H:%M:%S"))
-#df$LastActivityDate = as.Date(strptime(df$LastActivityDate, "%Y-%m-%d %H:%M:%S"))
-plot(df$AnswerCount~as.Date(df$CreationDate,"%H:%M:%S"),type="l")
-## attempted to plot creationdate (aka time) vs. answer count = (FAIL)     
-#plot(df$CreationDate,df$AnswerCount,xaxt="n")
-#axis.Date(1,at=df$CreationDate,labels=format(df$CreationDate,"%b-%d"),las=2)
+df$Hours <- format(as.POSIXct(df$CreationDate, "%Y-%m-%d %H:%M:%S", tz = ""), format = "%H")
+## plot AnswerCount vs. Hours
+plot(df$Hours, df$AnswerCount)
 
 # get character count for question body
 df$numCharInQuestion <- sapply(df$Body, nchar)
@@ -46,3 +44,13 @@ plot(df$QuestionWordCount + df$TitleWordCount, df$AnswerCount + df$CommentCount)
 
 # Are questions that are viewed more more likely to be answered?
 plot(df$ViewCount, df$AnswerCount)
+
+#ols_step_both_p(lm(AnswerCount ~ QuestionWordCount + TitleWordCount + TagCount, data = df), penter = .3, details = T)
+## Mapping out whether an answer is selected (y) vs. Answercount, questionwordcount, titlewordcount, and tagcount
+ols_step_both_p(lm(y ~ AnswerCount + QuestionWordCount + TitleWordCount + TagCount, data = df), penter = .3, details = T)
+## drop everything but TitleWordCount & TagCount
+lm(y ~ TitleWordCount + TagCount, data = df)
+mod <- glm(y ~ TitleWordCount + TagCount, family = binomial(link = "logit"), data = df)
+plot(df$TitleWordCount + df$TagCount, df$y)
+lines(df$TitleWordCount, predict(mod, type = "response"), type = "l", col = "red")
+# ^ what the heck is this
