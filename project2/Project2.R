@@ -1,31 +1,47 @@
 setwd("C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project2")
 
-library(ggplot2)
-library(olsrr)
+library(ggplot2) #for plotting
+library(olsrr) #for stepwise regression
+library(boot) #for crossvalidation
+library(caret) #cross validation stuff
+#install.packages('e1071', dependencies=TRUE)
 
-df <- read.csv("nondeletedposts.csv", stringsAsFactors = F)
+
+#Custom Query----
+#select * 
+#  from Posts
+#where PostTypeID = 1
+#and CreationDate >= '2017-01-01'
+
+#df <- read.csv("nondeletedposts.csv", stringsAsFactors = F)
+
+df <- read.csv("QueryResults.csv", stringsAsFactors = F)
 
 #only posts that were questions
-df <- df[df$PostTypeId==1,]
+#df <- df[df$PostTypeId==1,]
 #df <- df[seq(1,nrow(df), 10),] # just temporary to make things faster while I'm testing things out
 
 #Data Cleaning / Feature Engineering----
-df$y <- ifelse(!is.na(df$AcceptedAnswerId),1,0)
+df$y <- as.factor(ifelse(!is.na(df$AcceptedAnswerId),1,0))
 # remove html tags from the post
 df$Body <- gsub("<[^>]+>", "", df$Body)
 # get question word count, put the number in new column called QuestionWordCount
 df <- transform(df, QuestionWordCount=sapply(strsplit(df$Body, " "), length))
 # get title word count, put the count in new column called TitleWordCount
 df <- transform(df, TitleWordCount=sapply(strsplit(df$Title, " "), length))
+
+#Median is at 8
+cumsum(table(df$TitleWordCount))
+median(df$TitleWordCount)
+
+df$TitleWordCountBucket <- as.factor(ifelse(df$TitleWordCount > 8,1,0))
+
 ## Remove "<", ">", and "-" characters from tags 
 df$Tags <- gsub("<", " ", df$Tags)
 df$Tags <- gsub(">", " ", df$Tags)
 
 ## get number of tags from "Tags" column. Put tag count in new column called "TagCount"
 df <- transform(df, TagCount=sapply(strsplit(df$Tags, " "), length))
-
-
-
 
 #Analyze tag values
 s <- strsplit(df$Tags, split = " ")
@@ -58,12 +74,9 @@ df$non_sexy_stat_tags <- as.factor(ifelse(grepl(non_sexy_stat_pattern,df$Tags),1
 df$titleQMark <- as.factor(ifelse(grepl("\\?",df$Title),1,0))
 
 
-df
-
 ## try to clean up timestamp data (not sure if this is necessary tbh)
 df$Hours <- format(as.POSIXct(df$CreationDate, "%Y-%m-%d %H:%M:%S", tz = ""), format = "%H")
 
-grepl()
 
 #Exploratory Data Analysis----
 
@@ -104,38 +117,85 @@ boxplot(df$titleQMark, log(df$ViewCount))
 
 #Modeling----
 
+smp_size <- floor(0.9 * nrow(df))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(df)), size = smp_size)
+
+traindf <- df[train_ind, ]
+testdf <- df[-train_ind, ]
+
+nrow(traindf)
+nrow(testdf)
+
 #ols_step_both_p(lm(AnswerCount ~ QuestionWordCount + TitleWordCount + TagCount, data = df), penter = .3, details = T)
 ## Mapping out whether an answer is selected (y) vs. Answercount, questionwordcount, titlewordcount, and tagcount
-ols_step_both_p(lm(y ~ AnswerCount + QuestionWordCount + TitleWordCount + TagCount, data = df), penter = .3, details = T)
+ols_step_both_p(lm(y ~ QuestionWordCount + TitleWordCount + TagCount, data = df), penter = .05, details = T)
 ## drop everything but TitleWordCount & TagCount
-lm(y ~ TitleWordCount + TagCount, data = df)
-mod <- glm(y ~ TitleWordCount + TagCount, family = binomial(link = "logit"), data = df)
+mod <- glm(y ~ TitleWordCount + TagCount,family = binomial(link = "logit"), data = traindf)
+#mod <- glm(y ~ TitleWordCount + TagCount, family = binomial(link = "logit"), data = df)
 plot(df$TitleWordCount + df$TagCount, df$y)
-lines(df$TitleWordCount, predict(mod, type = "response"), type = "l", col = "red")
-# ^ what the heck is this
-#typo
 
-mod2 <- glm(y ~ TitleWordCount + TagCount + sexy_ml_tag + titleQMark, family = binomial(link = "logit"), data = df)
+#Add sexy ml tag
+mod2 <- glm(y ~ TitleWordCount + TagCount + sexy_ml_tag, family = binomial(link = "logit"), data = traindf)
 
 summary(mod2)
-anova(mod2)
+anova(mod, mod2, test = 'Chisq')
 
-nullmod <- glm(y ~ 1, family = binomial(link = 'logit'), data = df)
+nullmod <- glm(y ~ 1, family = binomial(link = 'logit'), data = traindf)
 
-anova(mod, mod2)
+anova(nullmod, mod2)
 
 summary(mod2)
 
-#add the non-sexy stat tags to the model
+#Add question mark
+mod3 <- glm(y ~ TitleWordCount + TagCount + titleQMark, family = binomial(link = "logit"), data = traindf)
 
-mod3 <- glm(y ~TitleWordCount + TagCount + sexy_ml_tag + titleQMark + non_sexy_stat_tags, family = binomial(link = "logit"), data = df)
-
-#So basically we need to be sure to include a question mark in our title and avoid using the sexy ml tags, also try to keep the titles short
 summary(mod3)
+#remove the title word count
 
-dev_mod3 <- anova(mod3)$Deviance[2]
-df_mod3 <- anova(mod3)$Df[2]
+#Remove title word count
+mod4 <- glm(y ~ TagCount + titleQMark, family = binomial(link = "logit"), data = traindf)
+summary(mod4)
 
-#Want this to be above 0.05, not below, so this is good
-#Here we are comparing this to the saturated model
-1 - pchisq(dev_mod3, df_mod3)
+#Add sexy ml tag again
+mod5 <- glm(y ~ TagCount + titleQMark + sexy_ml_tag, family = binomial(link = "logit"), data = traindf)
+
+summary(mod5)
+
+anova(mod4, mod5, test = "Chisq")
+
+dev_mod5 <- anova(mod4, mod5)$Deviance[2]
+df_mod5 <- anova(mod4, mod5)$Df[2]
+
+#against the previous model
+1-pchisq(dev_mod5, df_mod5)
+
+sat_dev_mod5 <- anova(mod5)$`Resid. Dev`[2]
+sat_df_mod5 <- anova(mod5)$`Resid. Df`[2]
+
+#against the saturdated model
+1 - pchisq(sat_dev_mod5, sat_df_mod5)
+
+
+#Evaluate Accuracy of mod 5----
+pred <- predict(mod5, newdata = testdf, type ='response')
+
+percent_answered <- sum(as.integer(testdf$y)-1)/nrow(testdf)
+
+decision_boundary <- quantile(pred, c(1-percent_answered))
+
+ypred <- as.factor(ifelse(pred >= decision_boundary, 1, 0))
+
+confusionMatrix(data = ypred, testdf$y)
+
+
+#Cross Validation----
+ctrl <- trainControl(method = "repeatedcv", number = 10, savePredictions = TRUE)
+
+mod_fit <- train(y ~ TagCount + titleQMark + sexy_ml_tag,  data=df, method="glm", family="binomial", trControl = ctrl, tuneLength = 5, metric = 'Accuracy')
+
+
+pred = predict(mod_fit, newdata=testdf)
+confusionMatrix(data=pred, testdf$y)
