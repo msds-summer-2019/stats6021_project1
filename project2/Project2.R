@@ -1,11 +1,24 @@
-setwd("C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project2")
+
+user = 'Bradley'
+
+if (user == "Bradley") {
+  setwd('/Users/Bradley/Documents/GitHub/stats6021_project1/project2/')
+}
+
+if (user == "Charlie") {
+  setwd("C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project2")
+}
+
+
+#install.packages("remotes")
+#remotes::install_github("nrguimaraes/sentimentSetsR")
 
 library(ggplot2) #for plotting
 library(olsrr) #for stepwise regression
 library(boot) #for crossvalidation
 library(caret) #cross validation stuff
 #install.packages('e1071', dependencies=TRUE)
-
+library(sentimentSetsR)
 
 #Custom Query----
 #select * 
@@ -199,3 +212,10 @@ mod_fit <- train(y ~ TagCount + titleQMark + sexy_ml_tag,  data=df, method="glm"
 
 pred = predict(mod_fit, newdata=testdf)
 confusionMatrix(data=pred, testdf$y)
+#Want this to be above 0.05, not below, so this is good
+#Here we are comparing this to the saturated model
+1 - pchisq(dev_mod3, df_mod3)
+
+
+# Get sentiment of title
+df$titleSentiment <- getVaderRuleBasedSentiment(df$Title, compound=TRUE)
