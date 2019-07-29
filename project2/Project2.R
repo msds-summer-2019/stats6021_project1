@@ -1,7 +1,22 @@
-setwd("C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project2")
+
+user = 'Bradley'
+
+if (user == "Bradley") {
+  setwd('/Users/Bradley/Documents/GitHub/stats6021_project1/project2/')
+}
+
+if (user == "Charlie") {
+  setwd("C:\\Users\\cmp2c\\Desktop\\Summer2019\\STAT6021\\Project2")
+}
+
+
+#install.packages("remotes")
+#remotes::install_github("nrguimaraes/sentimentSetsR")
 
 library(ggplot2)
 library(olsrr)
+library(sentimentSetsR)
+
 
 df <- read.csv("nondeletedposts.csv", stringsAsFactors = F)
 
@@ -139,3 +154,7 @@ df_mod3 <- anova(mod3)$Df[2]
 #Want this to be above 0.05, not below, so this is good
 #Here we are comparing this to the saturated model
 1 - pchisq(dev_mod3, df_mod3)
+
+
+# Get sentiment of title
+df$titleSentiment <- getVaderRuleBasedSentiment(df$Title, compound=TRUE)
