@@ -56,6 +56,10 @@ df$Tags <- gsub(">", " ", df$Tags)
 ## get number of tags from "Tags" column. Put tag count in new column called "TagCount"
 df <- transform(df, TagCount=sapply(strsplit(df$Tags, " "), length))
 
+df$TagCount <- df$TagCount / 2
+
+df
+
 #Analyze tag values
 s <- strsplit(df$Tags, split = " ")
 
@@ -86,6 +90,26 @@ df$non_sexy_stat_tags <- as.factor(ifelse(grepl(non_sexy_stat_pattern,df$Tags),1
 #title has question mark? does asking a question increase your likelihood?
 df$titleQMark <- as.factor(ifelse(grepl("\\?",df$Title),1,0))
 
+df$lowerTitle = tolower(df$Title)
+
+#Categorize questions by type
+df$QType <- as.factor(ifelse(startsWith(df$lowerTitle, 'what'),'what',
+                ifelse(startsWith(df$lowerTitle, 'why'),'why',
+                  ifelse(startsWith(df$lowerTitle, 'where'), 'where',
+                    ifelse(startsWith(df$lowerTitle, 'how'), 'how',
+                      ifelse(startsWith(df$lowerTitle, 'who'), 'who',
+                        ifelse(startsWith(df$lowerTitle, 'is'), 'is',
+                          ifelse(startsWith(df$lowerTitle, 'when'), 'when', 'other'
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+
+df <- within(df, QType <- relevel(QType, ref = 'other'))
 
 ## try to clean up timestamp data (not sure if this is necessary tbh)
 df$Hours <- format(as.POSIXct(df$CreationDate, "%Y-%m-%d %H:%M:%S", tz = ""), format = "%H")
@@ -122,11 +146,18 @@ plot(df$QuestionWordCount + df$TitleWordCount, df$AnswerCount + df$CommentCount)
 plot(df$ViewCount, df$AnswerCount)
 
 #Seems to be that adding machine learning tags helps views
-boxplot(df$sexy_ml_tag, log(df$ViewCount))
+boxplot(log(df$ViewCount) ~ df$sexy_ml_tag)
+
+boxplot(log(df$ViewCount) ~ df$non_sexy_stat_tags)
 
 #Making sure your question contains a question mark also seems to help
-boxplot(df$titleQMark, log(df$ViewCount))
+boxplot(log(df$ViewCount) ~ df$titleQMark)
 
+boxplot(log(df$ViewCount) ~ df$QType, notch = TRUE)
+
+boxplot(log(df$ViewCount) ~ df$TagCount)
+
+df$TagCount
 
 #Modeling----
 
@@ -192,8 +223,17 @@ sat_df_mod5 <- anova(mod5)$`Resid. Df`[2]
 1 - pchisq(sat_dev_mod5, sat_df_mod5)
 
 
+mod6 <- glm(y ~ TagCount + titleQMark + sexy_ml_tag + QType, family = binomial(link = "logit"), data = traindf)
+
+summary(mod6)
+
+anova(mod5, mod6, test = 'Chisq')
+
+summary(mod6)
+
+
 #Evaluate Accuracy of mod 5----
-pred <- predict(mod5, newdata = testdf, type ='response')
+pred <- predict(mod6, newdata = testdf, type ='response')
 
 percent_answered <- sum(as.integer(testdf$y)-1)/nrow(testdf)
 
@@ -201,7 +241,7 @@ decision_boundary <- quantile(pred, c(1-percent_answered))
 
 ypred <- as.factor(ifelse(pred >= decision_boundary, 1, 0))
 
-confusionMatrix(data = ypred, testdf$y)
+confusionMatrix(data =ypred, testdf$y)
 
 
 #Cross Validation----
