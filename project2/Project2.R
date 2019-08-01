@@ -1,5 +1,5 @@
 
-user = 'Charlie'
+user = 'NA'
 
 if (user == "Bradley") {
   setwd('/Users/Bradley/Documents/GitHub/stats6021_project1/project2/')
@@ -38,8 +38,6 @@ library(latexpdf)
 #  from Posts
 #where PostTypeID = 1
 #and CreationDate >= '2017-01-01'
-
-#df <- read.csv("nondeletedposts.csv", stringsAsFactors = F)
 
 df <- read.csv("QueryResults.csv", stringsAsFactors = F)
 
@@ -223,6 +221,17 @@ png('formulaflag.png')
 boxplot(log(df$ViewCount) ~ df$formula_flag, xlab = 'Formula Flag', ylab = 'log(Views)', main = 'Effect of Formula Presence on Views')
 dev.off()
 
+
+#Views and answers
+png('viewsanswers.png')
+plot(log(df$ViewCount), df$AnswerCount, xlab = 'log(Views)', ylab = '# of Answers', main = 'Relationship between log(Views) on Answers')
+dev.off()
+
+#Views and accepted answers
+png('viewsacceptedanswers.png')
+boxplot(log(df$ViewCount) ~ df$y, xlab = 'Accepted Answer', ylab = 'log(Views)', main = 'Relatinonship between log(Views) and Accepted Answers')
+dev.off()
+
 #Train/test split----
 
 #set sample size to 90% of data
@@ -334,6 +343,8 @@ sat_df_mod10 <- anova(mod10)$`Resid. Df`[2]
 
 1-pchisq(sat_dev_mod10, sat_df_mod10)
 
+
+
 #ROC curves----
 
 #generate predictions for each model
@@ -429,6 +440,62 @@ mod10_cutoff <- opt.cut(perf10, p10)[3]
 mod10_sens <- opt.cut(perf10, p10)[1]
 mod10_spec <- opt.cut(perf10, p10)[2]
 
+
+#plotting sensitivity vs accuracy to demonstrate accuracy isnt always good
+png('mod10accuracy.png')
+perf10_acc <- performance(p10, "sens","acc")
+plot(perf10_acc,colorize=TRUE, main = "Model 10 Accuracy")
+segments(x0=mod10_spec, y0 = 0, x1 = mod10_spec, y1 = mod10_sens, col = 'blue')
+segments(x0=0, y0 = mod10_sens, x1 = mod10_spec, y1 = mod10_sens, col = 'blue')
+dev.off()
+
+#plotting sensitivity vs accuracy to demonstrate accuracy isnt always good
+png('mod10precision.png')
+perf10_prec <- performance(p10, "sens","prec")
+plot(perf10_prec,colorize=TRUE, main = "Model 10 Precision")
+segments(x0=mod10_spec, y0 = 0, x1 = mod10_spec, y1 = mod10_sens, col = 'blue')
+segments(x0=0, y0 = mod10_sens, x1 = mod10_spec, y1 = mod10_sens, col = 'blue')
+dev.off()
+
+#plotting sensitivity vs accuracy to demonstrate accuracy isnt always good
+png('mod10specvsaccuracy.png')
+perf10_spec_acc <- performance(p10, "spec","acc")
+plot(perf10_spec_acc,colorize=TRUE, main = "Model 10 Precision")
+dev.off()
+
+#Sensitivity Cutoff----
+
+#Alphas are accuracy
+#ys are sensitivity
+#xs are specifitity
+
+#cutoff to get 80 sensitivity is 24.5%
+target_sensitivity2 <- 0.95
+
+
+sensitivity2 <- perf10_spec@y.values[[1]][perf10_spec@y.values[[1]] > target_specificity][1]
+
+#Use sensitivity value to determine cutoff
+sens_target_cutoff <- perf10_spec@alpha.values[[1]][perf10_spec@y.values[[1]] > target_specificity][1]
+#24.5%)
+
+specificity2 <- perf10_spec@x.values[[1]][perf10_spec@y.values[[1]] > target_specificity][1]
+
+
+
+#Specificity cutoff----
+
+target_specificity <- 0.95
+
+
+specificity <- tail(perf10_spec@x.values[[1]][perf10_spec@x.values[[1]] > target_specificity], n = 1)
+
+#Use sensitivity value to determine cutoff
+spec_target_cutoff <- tail(perf10_spec@alpha.values[[1]][perf10_spec@x.values[[1]] > target_specificity], n = 1)
+#24.5%)
+
+sensitivity <- tail(perf10_spec@y.values[[1]][perf10_spec@x.values[[1]] > target_specificity], n = 1)
+
 #ROC plot for best model
 png('mod10roc.png')
 perf10 <- performance(p10, "tpr","fpr")
@@ -439,18 +506,23 @@ dev.off()
 #Sensitivity vs specficity for best model
 png('mod10sensspec.png')
 perf10_spec <- performance(p10, "sens","spec")
-plot(perf10_spec,colorize=TRUE, main = "Model 10")
+plot(perf10_spec,colorize=TRUE, main = "Model 10 - Sensitivity vs. Specificity")
 abline(1,-1)
 #Plots optimal values for specificity and sensitivity when optimizing on cutoff
-segments(x0=mod10_spec, y0 = 0, x1 = mod10_spec, y1 = mod10_sens, col = 'blue')
-segments(x0=0, y0 = mod10_sens, x1 = mod10_spec, y1 = mod10_sens, col = 'blue')
+segments(x0=specificity, y0 = 0, x1 = specificity, y1 = sensitivity, col = 'blue')
+segments(x0=0, y0 = sensitivity, x1 = specificity, y1 = sensitivity, col = 'blue')
 dev.off()
 
-#plotting sensitivity vs accuracy to demonstrate accuracy isnt always good
-png('mod10accuracy.png')
-perf10_acc <- performance(p10, "sens","acc")
-plot(perf10_acc,colorize=TRUE, main = "Model 10 Accuracy")
+#Sensitivity vs specficity for best model
+png('mod10sensspec2.png')
+perf10_spec <- performance(p10, "sens","spec")
+plot(perf10_spec,colorize=TRUE, main = "Model 10 - Sensitivity vs. Specificity")
+abline(1,-1)
+#Plots optimal values for specificity and sensitivity when optimizing on cutoff
+segments(x0=specificity2, y0 = 0, x1 = specificity2, y1 = sensitivity2, col = 'blue')
+segments(x0=0, y0 = sensitivity2, x1 = specificity2, y1 = sensitivity2, col = 'blue')
 dev.off()
+
 
 #Summary of model in LaTeX
 xtable(summary(mod10))
@@ -519,7 +591,8 @@ mod9_auc@y.values
 mod10$call[[2]]
 mod10$aic
 mod10_auc <- performance(p10, measure = 'auc', fpr.stop=0.1)
-mod10_auc@y.values
+mod10_auc@y.values[[1]] + 0.5
+
 
 xtable(anova(nullmod, mod10, test = 'Chisq'))
 
@@ -527,32 +600,64 @@ anova(mod10)
 #Better than nothing
 1 - pchisq(sat_dev_mod10, sat_df_mod10)
 
+
 #Plot distribution of prediction values in best model
 png('prediction_distribution.png')
 hist(pred10, xlab = 'Probability Question was Answered Sufficiently', ylab = 'Frequency',main = 'Distribtion of Predictions from Test Set')
 dev.off()
 
-#Confusion Matrix----
+png('pred_dist_cutoff.png')
+hist(pred10, xlab = 'Probability Question was Answered Sufficiently', ylab = 'Frequency',main = 'Distribtion of Predictions from Test Set')
+abline(v = spec_target_cutoff, col = 'red')
+dev.off()
+
+?abline
+
+#Model Prediction -----
 #Store predictions again into pred
 pred <- predict(mod10, newdata = testdf, type ='response')
 
 #Use best cutoff value to encode probabilities to 1s and 0s
-ypred <- as.factor(ifelse(pred >= mod10_cutoff, 1, 0))
+ypredspec <- as.factor(ifelse(pred >= spec_target_cutoff, 1, 0))
+ypredsens <- as.factor(ifelse(pred >= sens_target_cutoff, 1, 0))
 #Generate confusion matrix
-confusionMatrix(data =ypred, testdf$y)
+confusionMatrix(data =ypredspec, testdf$y)
+confusionMatrix(data =ypredsens, testdf$y)
 
-#Plot confusion matrix using GGPlot
-Actual <- factor(c(0, 0, 1, 1))
-Predicted <- factor(c(0, 1, 0, 1))
-Y      <- c(1985, 1587, 661, 767)
-results <- data.frame(Actual, Predicted, Y)
+max(pred)
 
-png('confusionmatrix.png')
-ggplot(data =  results, mapping = aes(x = Actual, y = Predicted)) +
-  geom_tile(aes(fill = Y), colour = "white") +
-  geom_text(aes(label = sprintf("%1.0f",Y)), vjust = 1) +
+#Confusion Matrix----
+
+#Plot Specifity confusion matrix using GGPlot
+Actualspec <- factor(c(0, 0, 1, 1))
+Predictedspec <- factor(c(0, 1, 0, 1))
+Yspec      <- c(3394, 178, 1283, 145)
+resultsspec <- data.frame(Actual, Predicted, Y)
+
+png('confusionmatrix_specifity.png')
+ggplot(data =  resultsspec, mapping = aes(x = Actual, y = Predicted)) +
+  geom_tile(aes(fill = Yspec), colour = "white") +
+  geom_text(aes(label = sprintf("%1.0f",Yspec)), vjust = 1) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  theme_bw() + theme(legend.position = "none")
+  theme_bw() + theme(legend.position = "none") +
+  ggtitle('Confusion Matrix for 95% Specificity') +
+  theme(plot.title = element_text(hjust = 0.5))
+dev.off()
+
+#Plot Sensitivity confusion matrix using GGPlot
+Actualsens <- factor(c(0, 0, 1, 1))
+Predictedsens <- factor(c(0, 1, 0, 1))
+Ysens      <- c(238, 3334, 71, 1357)
+resultssens <- data.frame(Actual, Predicted, Y)
+
+png('confusionmatrix_sensitivity.png')
+ggplot(data =  resultssens, mapping = aes(x = Actual, y = Predicted)) +
+  geom_tile(aes(fill = Ysens), colour = "white") +
+  geom_text(aes(label = sprintf("%1.0f",Ysens)), vjust = 1) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  theme_bw() + theme(legend.position = "none") +
+  ggtitle('Confusion Matrix for 95% Sensitivity') +
+  theme(plot.title = element_text(hjust = 0.5))
 dev.off()
 
 #use high cutoff value to illustrate how high accuracy isnt always good
@@ -572,4 +677,27 @@ ggplot(data =  results2, mapping = aes(x = Actual, y = Predicted)) +
   scale_fill_gradient(low = "white", high = "steelblue") +
   theme_bw() + theme(legend.position = "none")
 dev.off()
+
+
+
+#Test Predictions----
+#Used in slides
+pTagCount = c(0,0,0,0,0,5,5)
+ptitleQMark = c(0,0,0,0,1,1,1)
+pQType = c('other','why','why','why','why','why','why')
+pHoursContinuous = c(0,0,0,0,0,0,0)
+pcompound = c(0,0,0,0,0,0,-1)
+pcode_flag = c(0,0,0,1,1,1,1)
+pformula_flag = c(0,0,1,1,1,1,1)
+
+#build data frame
+test_prediction_data <- data.frame (TagCount = pTagCount, titleQMark = ptitleQMark, QType = pQType, HoursContinuous = pHoursContinuous, compound = pcompound, code_flag = pcode_flag, formula_flag = pformula_flag, stringsAsFactors = TRUE)
+
+#transform predictors into factors
+test_prediction_data$titleQMark <- as.factor(test_prediction_data$titleQMark)
+test_prediction_data$code_flag <- as.factor(test_prediction_data$code_flag)
+test_prediction_data$formula_flag <- as.factor(test_prediction_data$formula_flag)
+
+#generate and print predictions
+(test_predictions <- predict(mod10, newdata = test_prediction_data, type ='response') )
 
